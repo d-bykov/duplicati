@@ -56,6 +56,11 @@ namespace Duplicati.Library.Main.Database
 
             var c = Duplicati.Library.SQLiteHelper.SQLiteLoader.LoadConnection(path);
 
+            // A temporary fix for issue #4172 to avoid SQLite queries hangs
+            var analyzeCommand = c.CreateCommand();
+            analyzeCommand.CommandText = "ANALYZE";
+            analyzeCommand.ExecuteNonQuery();
+
             Library.SQLiteHelper.DatabaseUpgrader.UpgradeDatabase(c, path, typeof(LocalDatabase));
 
             return c;
@@ -430,10 +435,6 @@ namespace Duplicati.Library.Main.Database
 
                 // Create a temporary table to cache subquery result, as it might take long (SQLite does not cache at all). 
                 deletecmd.ExecuteNonQuery(string.Format(@"CREATE TEMP TABLE ""{0}"" (""ID"" INTEGER PRIMARY KEY)", blocksetidstable));
-
-                // A temporary fix for issue #4172 to avoid SQLite queries hangs
-                deletecmd.ExecuteNonQuery("ANALYZE");
-
                 deletecmd.ExecuteNonQuery(string.Format(@"INSERT OR IGNORE INTO ""{0}"" (""ID"") {1}", blocksetidstable, bsIdsSubQuery));
                 bsIdsSubQuery = string.Format(@"SELECT ""ID"" FROM ""{0}"" ", blocksetidstable);
                 deletecmd.Parameters.Clear();
